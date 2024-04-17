@@ -1,20 +1,25 @@
 import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 import sys
-import yaml
 import re
 import time
 from selenium.webdriver.common.by import By
 
-valor_uf = 32196.69
-
 # Lee las URLs desde un archivo
-filename = sys.argv[1] if len(sys.argv) > 1 else 'urlsPropiedadesNuevas.txt'
+filename = sys.argv[1] if len(sys.argv) > 1 else 'urlsPropiedadesUsadas.txt'
 with open(f"Data/{filename}", 'r') as file:
     lines = [line.strip() for line in file]
 
 # Inicializa el navegador utilizando undetected_chromedriver
 browser = uc.Chrome()
+
+browser.get("https://valoruf.cl")
+
+# Encuentra el valor de la UF en la página
+ufpesor = browser.find_element(By.ID, "ufpesor").text.replace(".", "").replace(",", ".")
+valor_uf = float(ufpesor)
+print(valor_uf)
+
 
 for url in lines:
     # Navegar a la página del inmueble
