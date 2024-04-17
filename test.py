@@ -4,6 +4,8 @@ import sys
 import re
 import time
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Lee las URLs desde un archivo
 filename = sys.argv[1] if len(sys.argv) > 1 else 'urlsPropiedadesUsadas.txt'
@@ -26,7 +28,7 @@ for url in lines:
     browser.get(url)
 
     
-    browser.implicitly_wait(10)
+    WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.TAG_NAME, "footer")))
 
     # Encuentra el botón para aceptar cookies y haz clic en él si es necesario
     try:
@@ -108,7 +110,7 @@ for url in lines:
     for tab_id in tab_ids:  # IDs de pestañas
         tab = browser.find_element(By.XPATH, f"//button[@id='{tab_id}']")
         tab.click()
-        time.sleep(2)  # Espera para que el contenido se cargue
+        time.sleep(1)  # Espera para que el contenido se cargue
 
         # Extrae y procesa la pestaña actual
         tab_content_html = browser.page_source
