@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Reemplaza 'ruta_del_archivo.csv' con la ruta real de tu archivo
-archivo = 'Ds_output/output_data.csv'
+archivo = 'Ds_output/output_data_text.csv'
 df = pd.read_csv(archivo, delimiter='|')  # Carga todo el DataFrame sin el parámetro nrows
 
 # Mostrar las cabeceras originales
