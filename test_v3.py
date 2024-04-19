@@ -15,7 +15,7 @@ async def setup_browser():
     user_data_dir.mkdir(parents=True, exist_ok=True)  # Crea el directorio si no existe
     
     browser = await launch(
-        executablePath='C:/Program Files (x86)/chrome-win/chrome.exe', 
+        #executablePath='C:/Program Files (x86)/chrome-win/chrome.exe', 
         headless=True, 
         args=[
             '--no-sandbox', 
