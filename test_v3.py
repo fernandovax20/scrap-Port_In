@@ -8,6 +8,7 @@ import sys
 import unicodedata
 from pathlib import Path
 import shutil
+from datetime import datetime
 
 async def setup_browser():
     user_data_dir = Path.cwd() / 'temp' / 'pyppeteer_data_dir'
@@ -49,7 +50,8 @@ def normalize_string(input_str):
     return no_accents_str.lower()
 
 async def scrape(urls, valor_uf):
-    
+    now = datetime.now()
+    date_time_str = now.strftime("%Y-%m-%d_%H-%M-%S")
     browser, user_data_dir = await setup_browser()
     all_data = []
     page = await browser.newPage()
@@ -59,7 +61,7 @@ async def scrape(urls, valor_uf):
         page = await browser.newPage()
         try:
             await page.goto(url)
-            await page.waitForSelector("footer", {'timeout': 10000})
+            await page.waitForSelector("footer", {'timeout': 5000})
             content = await page.content()
             soup = BeautifulSoup(content, "lxml")
 
@@ -67,7 +69,7 @@ async def scrape(urls, valor_uf):
 
             try:
                 # Esperar por el botón de cookies durante un tiempo máximo de 2 segundos
-                cookie_button = await page.waitForSelector('#newCookieDisclaimerButton', {'timeout': 2000})
+                cookie_button = await page.waitForSelector('#newCookieDisclaimerButton', {'timeout': 500})
                 if cookie_button:
                     await cookie_button.click()
                     print("Botón de cookies clickeado.")
@@ -120,44 +122,36 @@ async def scrape(urls, valor_uf):
                 print(f"No se pudo extraer la información de la propiedad: {str(e)}")
                 specs_data = {'metros_cuadrados': 0, 'dormitorios': 0, 'banios': 0}
 
-            
-            # Interactuar con elementos dinámicos
             try:
-                category_data = {}
-                tab_buttons = await page.querySelectorAll(".andes-tabs__container button")
-                for button in tab_buttons:
-                    button_id = await button.getProperty('id')  # Obtener la propiedad 'id' del botón
-                    button_id = await button_id.jsonValue()  # Convertir la propiedad a un valor JSON/String
-                    await button.click()
-                    await page.waitFor(1000)  # Esperar que se cargue el contenido
-                    content = await page.content()
-                    tab_soup = BeautifulSoup(content, 'lxml')
-                    current_tab = tab_soup.find("div", {"aria-labelledby": button_id})  # Usar button_id aquí
+                map_container = soup.find(id="ui-vip-location__map")
+                if map_container:
+                    map_image = map_container.find("img")
+                    if map_image and 'srcset' in map_image.attrs:
+                        map_srcset = map_image['srcset']
+                        coords_match = re.search(r'center=(-?\d+\.\d+)%2C(-?\d+\.\d+)', map_srcset)
+                        if coords_match:
+                            latitude, longitude = coords_match.groups()
+                            latitude = float(latitude)
+                            longitude = float(longitude)
+                        else:
+                            latitude, longitude = None, None
+                    else:
+                        latitude, longitude = None, None
+                else:
+                    latitude, longitude = None, None
 
-                    if current_tab:
-                        sections = current_tab.find_all("div", class_="ui-vip-poi__subsection")
-                        for section in sections:
-                            section_title = normalize_string(section.find("span", class_="ui-vip-poi__subsection-title").get_text(strip=True).replace(" ", "_"))
-                            items = section.find_all("div", class_="ui-vip-poi__item")
-                            times_distances = [extract_time_distance(item.find("span", class_="ui-pdp-color--GRAY").get_text(strip=True)) for item in items]
-                            times, distances = zip(*[td for sublist in times_distances for td in sublist]) if any(times_distances) else ([], [])
-                            tmin, tmax, tavg = calculate_stats(times)
-                            dmin, dmax, davg = calculate_stats(distances)
-                            category_data[f'{section_title}_tmin'] = tmin
-                            category_data[f'{section_title}_tmax'] = tmax
-                            category_data[f'{section_title}_tavg'] = tavg
-                            category_data[f'{section_title}_dmin'] = dmin
-                            category_data[f'{section_title}_dmax'] = dmax
-                            category_data[f'{section_title}_davg'] = davg
+                #print(f"Coordenadas: {latitude}, {longitude}")
             except Exception as e:
-                print(f"No se pudo interactuar con elementos dinámicos: {str(e)}")
-                category_data = {}
+                print(f"No se pudo extraer las coordenadas de la propiedad: {str(e)}")
+                latitude, longitude = None, None
             
             all_data.append({
                 "direccion": direccion,
                 "precio_uf": price,
                 **specs_data,
-                **category_data
+                "latitude": latitude,
+                "longitude": longitude,
+                "url": url
             })
             
         # Cerrar la pestaña después de procesar cada URL
@@ -167,7 +161,10 @@ async def scrape(urls, valor_uf):
                 # Guarda los datos actuales en el CSV
                 df = pd.DataFrame(all_data)
                 if not df.empty:
-                    df.to_csv('Ds_Output/output_data.csv', mode='a', sep='|', index=False, header=not Path('Ds_Output/output_data.csv').exists())
+                    # Crear el nombre del archivo con la fecha y hora al final
+                    file_name = f'Ds_Output/output_data_{date_time_str}.csv'
+                    # Guardar el DataFrame en un archivo CSV con la fecha y hora en el nombre
+                    df.to_csv(file_name, mode='a', sep='|', index=False, header=not Path(file_name).exists())
                 # Limpia all_data
                 all_data = []
                 # Reinicia el navegador si no has terminado
