@@ -1,7 +1,6 @@
 import pandas as pd
 import overpy
 from geopy.distance import geodesic
-from geopy.distance import geodesic
 
 def calcular_distancias_y_tiempo(nodos, origen):
     velocidad_caminata_kmh = 5
@@ -28,7 +27,6 @@ def calcular_distancias_y_tiempo(nodos, origen):
         max_tiempo = (max_dist / 1000) / velocidad_caminata_kmh * 60
         promedio_tiempo = (promedio_dist / 1000) / velocidad_caminata_kmh * 60
 
-        # Redondea los resultados si hay nodos
         return {
             'tiempo(minutos)_min': round(min_tiempo, 1),
             'tiempo(minutos)_max': round(max_tiempo, 1),
@@ -38,7 +36,6 @@ def calcular_distancias_y_tiempo(nodos, origen):
             'dist(metros)_avg': round(promedio_dist, 1)
         }
     else:
-        # Devuelve None para todos los valores si no hay nodos
         return {
             'tiempo(minutos)_min': None,
             'tiempo(minutos)_max': None,
@@ -48,11 +45,9 @@ def calcular_distancias_y_tiempo(nodos, origen):
             'dist(metros)_avg': None
         }
 
-
 def buscar_entidades(lat, lon, radio=1000):
     api = overpy.Overpass()
     origen = (lat, lon)
-
     tipos_entidades = {
         "centros_comerciales": '"shop"="mall"',
         "clinicas": '"amenity"="clinic"',
@@ -82,27 +77,33 @@ def buscar_entidades(lat, lon, radio=1000):
 
     return resultados
 
-# Cargar archivo original y procesar solo las primeras 10 filas
-ruta_archivo_original = "Ds_Output/output_data_2024-04-18_22-28-33.csv"
+ruta_archivo_original = "Ds_Output/combined_clean_output_test.csv"
 df_original = pd.read_csv(ruta_archivo_original, sep='|')
+url_index = df_original.columns.get_loc("url")
 
-url_index = df_original.columns.get_loc("url")  # Encontrar el índice de la columna 'url'
+# Preparar para procesar las filas y guardar cada 10 iteraciones
+batch_size = 10
+batch_number = 0
 
-# Preparar para procesar solo las primeras 10 filas
-for idx, row in df_original.head(10).iterrows():
+for idx, row in df_original.iterrows():
     if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
         print(f"Procesando fila {idx + 1}...")
         datos_osm = buscar_entidades(row['latitude'], row['longitude'])
-        
-        # Añadir nuevas columnas si no existen y asignar valores
         for key, value in datos_osm.items():
             if key not in df_original:
                 df_original.insert(loc=url_index, column=key, value=pd.NA)
-                url_index += 1  # Incrementar para la siguiente inserción
-            df_original.at[idx, key] = value  # Asignar valor a la fila actual
-            
-    print(f"Fila {idx + 1} completada.")
+                url_index += 1
+            df_original.at[idx, key] = value
 
-# Guardar el DataFrame actualizado
-df_original.to_csv("Ds_Output/output_data_enriched.csv", sep='|', index=False)
+    # Guardar en el archivo CSV cada 10 filas
+    if (idx + 1) % batch_size == 0:
+        batch_number += 1
+        print(f"Guardando lote {batch_number} en el archivo...")
+        df_original.to_csv("Ds_Output/output_data_enriched.csv", sep='|', index=False)
+
+# Asegúrate de guardar los datos restantes si no son múltiplos de 10
+if len(df_original) % batch_size != 0:
+    print("Guardando las filas finales...")
+    df_original.to_csv("Ds_Output/output_data_enriched.csv", sep='|', index=False)
+
 print("Datos combinados y guardados exitosamente.")
