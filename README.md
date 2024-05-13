@@ -5,17 +5,10 @@ Este script en Python utiliza Selenium y BeautifulSoup para automatizar la extra
 ## Requisitos
 
 - Python 3.x
-- Bibliotecas Python:
-  - `selenium`
-  - `undetected_chromedriver`
-  - `beautifulsoup4`
-  - `re`
-  - `time`
-  - `sys`
 
-Instale las dependencias necesarias con:
+Para instalar las bibliotecas, ejecute el siguiente comando:
 ```bash
-pip install selenium undetected_chromedriver beautifulsoup4
+pip install -r requirements.txt
 ```
 
 ## Configuración y Uso
